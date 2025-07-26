@@ -1,0 +1,16 @@
+fastapi
+pydantic[email]
+uvicorn[standard]
+python-multipart
+asyncpg
+aioredis
+neo4j
+langchain
+lang-graph
+openai
+anthropic
+websockets
+sse-starlette
+pytest
+pytest-asyncio
+httpx

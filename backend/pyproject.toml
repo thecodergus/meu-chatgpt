@@ -5,3 +5,35 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = []
+
+[tool.poetry]
+name = "app"
+version = "0.1.0"
+description = ""
+authors = ["Gustavo Michels de Camargo <gustavo.michels.de.camargo@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+fastapi = "^0.116.1"
+pydantic = { extras = ["email"], version = "^2.11.7" }
+uvicorn = { extras = ["standard"], version = "^0.35.0" }
+python-multipart = "^0.0.20"
+asyncpg = "^0.30.0"
+aioredis = "^2.0.1"
+neo4j = "^5.28.1"
+langchain = "^0.3.27"
+langgraph = "^0.5.4"
+openai = "^1.97.1"
+anthropic = "^0.59.0"
+websockets = "^15.0.1"
+sse-starlette = "^3.0.0"
+
+[tool.poetry.scripts]
+dev = "scripts.server:dev"
+start = "scripts.server:start"
+prod = "scripts.server:prod"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

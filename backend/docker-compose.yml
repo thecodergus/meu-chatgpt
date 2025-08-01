@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  fastapi-langgraph:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - USE_ANTHROPIC=${USE_ANTHROPIC}
+      - USE_OPENROUTER=${USE_OPENROUTER}
+    env_file:
+      - .env
+    volumes:
+      - .:/app

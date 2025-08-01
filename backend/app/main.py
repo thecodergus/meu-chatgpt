@@ -1,10 +1,36 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.v1 import router as api_v1_router
+from .api.v1 import router as api_v1_router
+from .api.health import router as health_router
+import os
+import logging
+from dotenv import load_dotenv
+from .config import validate_environment_variables
 
-app = FastAPI()
+# Configuração do logger
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
-# Configuração CORS para permitir tudo
+PORTA: int = 8000
+
+# Carrega as variáveis de ambiente
+load_dotenv()
+
+# Valida as variáveis de ambiente obrigatórias
+try:
+    validate_environment_variables()
+except ValueError as e:
+    logger.error(f"Erro na validação das variáveis de ambiente: {e}")
+    raise
+
+# Constante para a porta do servidor
+app = FastAPI(
+    title="FastAPI com LangGraph",
+    description="Backend FastAPI com endpoint similar ao da OpenAI para LLMs usando LangGraph",
+    version="1.0.0"
+)
+
+# Configuração de CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -13,8 +39,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(api_v1_router, prefix="/api/v1")
+# Inclui o roteador da API v1
+app.include_router(api_v1_router)
 
-@app.get("/health")
-async def health_check():
-    return {"status": "ok"}
+# Inclui o roteador de health check
+app.include_router(health_router)
+
+@app.get("/")
+async def root():
+    return {"message": "FastAPI com LangGraph está funcionando!"}
+
+if __name__ == "__main__":
+    import uvicorn
+    load_dotenv()
+    uvicorn.run(app, host=os.getenv("HOST", "0.0.0.0"), port=PORTA)

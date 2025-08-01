@@ -1,2 +1,3 @@
-# Pacote de endpoints da API.
-# Organiza as rotas e versões da API REST do projeto.
+from .v1 import router
+
+__all__ = ["router"]

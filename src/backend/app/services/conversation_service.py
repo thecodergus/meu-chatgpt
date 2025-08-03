@@ -3,17 +3,30 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from app.models.conversation import Conversation
 import uuid
+from fastapi import HTTPException
 
 class ConversationService:
     @staticmethod
     async def create_conversation(
         session: AsyncSession, agent_uuid: Optional[str] = None, tools_enabled: Optional[List[str]] = None
     ) -> Conversation:
+        default_tools: List[str] = []
+        if agent_uuid:
+            from app.models.agent import Agent
+            result = await session.execute(select(Agent).where(Agent.uuid == agent_uuid))
+            agent = result.scalar_one_or_none()
+            if not agent:
+                raise HTTPException(status_code=404, detail="Agent não encontrado")
+            # define ferramentas default com base na configuração do agente
+            from app.services.agents.agent_registry import AgentRegistry
+            code_agent = AgentRegistry.get(agent.name)
+            default_tools = code_agent.tools
+        applied_tools = tools_enabled if tools_enabled else default_tools
         thread_id = str(uuid.uuid4())
         conv = Conversation(
             thread_uuid=thread_id,
             agent_uuid=agent_uuid,
-            tools_enabled=tools_enabled or [],
+            tools_enabled=applied_tools,
             messages=[]
         )
         session.add(conv)

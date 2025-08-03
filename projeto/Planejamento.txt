@@ -1,0 +1,8 @@
+Implemente um sistema de gerenciamento de conversas melhor no projeto e ajuste os endpoints para se adequarem a esse sistema, onde esse sistema precisa seguir as seguintes ideias:
+- O usuario precisar solicitar a crianção de uma nova conversa, pois as conversas devem funcionar quase como se fosse uma sessão baseada no UUID da conversa e após isso é possivel inciar a troca de mensagens com as provedoras de LLMs.
+- Na comunicação entre backend e frontend é importante comunicar sobre qual conversa (por meio do campo thread_uuid) se trata o prompt enviado.
+- O sistema salva as configurações gerais do sistema e as conversas dentro de um banco de dados PostgreSQL e garante que tudo esteja atualizado, para o caso de coversas guardar usando JSONB
+- Dentre as configurações, ficam: chaves de API de diversos provedores
+- As chaves de API que ficam salvas no banco de dados devem estar criptografadas com algoritmo de nivel militar e só deve ser descriptografado na hora de fazer requisição junto ao provedor daquela determinada achave de API.
+- Esse sistema é do tipo usuario unico e uso em localhost, sem necessidade de se preocupar com sistema de gerenciamento de usuarios e sem necessidade de segurança rebuscada além da referente a chaves de API.
+- LangGraph é o carro chefe do projeto na construção de soluções com LLMs

@@ -44,6 +44,7 @@ class GraphManager:
         
         # Invoca o grafo
         response = self.graph.invoke({"messages": messages}, config=config)
+        return response
         
         # Retorna a resposta
     def stream_messages(self, model, messages):

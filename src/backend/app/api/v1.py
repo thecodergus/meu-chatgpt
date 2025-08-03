@@ -9,16 +9,21 @@ from ..models.openai import (
     ChatCompletionResponse,
     ChatCompletionChoice,
     Message,
-    Usage
+    Usage,
+    FunctionDefinition
 )
 from ..services.langgraph_service import LangGraphService
 from ..services.error_handler import ErrorHandler
 
-from fastapi import Depends, Body
+from fastapi import Depends, Body, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db import get_session
 from app.services.conversation_service import ConversationService
 from pydantic import BaseModel
+from datetime import datetime
+from app.services.agent_service import AgentService
+from app.services.agents.agent_registry import AgentRegistry
+from app.services.tools.tool_registry import ToolRegistry
 
 # Pydantic for conversation creation
 class CreateConversationResponse(BaseModel):
@@ -30,6 +35,22 @@ class ConversationResponse(BaseModel):
     agent_uuid: Optional[str]
     tools_enabled: List[str]
     messages: List[Message]
+
+# Pydantic para criação e resposta de agentes
+class AgentRequest(BaseModel):
+    name: str
+    description: Optional[str] = None
+    prompt: Optional[str] = None
+    image: Optional[str] = None
+
+class AgentResponse(BaseModel):
+    uuid: str
+    name: str
+    description: Optional[str]
+    prompt: Optional[str]
+    image: Optional[str]
+    created_at: datetime
+    updated_at: datetime
 
 router = APIRouter(prefix="/v1")
 
@@ -192,6 +213,25 @@ async def conversation_message_endpoint(
         raise HTTPException(status_code=404, detail="Conversa não encontrada")
     # Envia para LLM com histórico
     messages = conv.messages
+
+    # Carrega ferramentas habilitadas para este agente e constrói definições de função
+    agent_model = await AgentService.get_agent(session, conv.agent_uuid) if conv.agent_uuid else None
+    enabled_tool_names = conv.tools_enabled or []
+    if agent_model:
+        code_agent = AgentRegistry.get(agent_model.name)
+        default_tools = code_agent.tools
+        if not enabled_tool_names:
+            enabled_tool_names = default_tools
+    functions = []
+    for tool_name in enabled_tool_names:
+        metadata = ToolRegistry.get_metadata(tool_name)
+        if metadata:
+            functions.append(FunctionDefinition(
+                name=metadata.name,
+                description=metadata.description,
+                parameters=metadata.parameters
+            ))
+
     response_content = langgraph_service.process_chat_completion(
         messages,
         request.model,
@@ -199,7 +239,7 @@ async def conversation_message_endpoint(
         request.temperature,
         request.top_p,
         request.max_tokens,
-        request.functions,
+        functions,
         request.function_call
     )
     # Armazena resposta da AI
@@ -228,3 +268,90 @@ async def conversation_message_endpoint(
         usage=usage
     )
     return response
+
+
+# Endpoints de agentes
+@router.get("/agents", response_model=List[AgentResponse])
+async def list_agents_endpoint(
+    session: AsyncSession = Depends(get_session)
+):
+    agents = await AgentService.list_agents(session)
+    return [
+        AgentResponse(
+            uuid=a.uuid,
+            name=a.name,
+            description=a.description,
+            prompt=a.prompt,
+            image=a.image,
+            created_at=a.created_at,
+            updated_at=a.updated_at
+        )
+        for a in agents
+    ]
+
+@router.get("/agents/{agent_uuid}", response_model=AgentResponse)
+async def get_agent_endpoint(
+    agent_uuid: str,
+    session: AsyncSession = Depends(get_session)
+):
+    agent = await AgentService.get_agent(session, agent_uuid)
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent não encontrado")
+    return AgentResponse(
+        uuid=agent.uuid,
+        name=agent.name,
+        description=agent.description,
+        prompt=agent.prompt,
+        image=agent.image,
+        created_at=agent.created_at,
+        updated_at=agent.updated_at
+    )
+
+@router.put("/agents/{agent_uuid}", response_model=AgentResponse)
+async def update_agent_endpoint(
+    agent_uuid: str,
+    session: AsyncSession = Depends(get_session),
+    request: AgentRequest = Body(...)
+):
+    agent = await AgentService.update_agent(
+        session, agent_uuid,
+        name=request.name,
+        description=request.description,
+        prompt=request.prompt,
+        image=request.image
+    )
+    return AgentResponse(
+        uuid=agent.uuid,
+        name=agent.name,
+        description=agent.description,
+        prompt=agent.prompt,
+        image=agent.image,
+        created_at=agent.created_at,
+        updated_at=agent.updated_at
+    )
+
+@router.delete("/agents/{agent_uuid}", status_code=204)
+async def delete_agent_endpoint(
+    agent_uuid: str,
+    session: AsyncSession = Depends(get_session)
+):
+    await AgentService.delete_agent(session, agent_uuid)
+    return Response(status_code=204)
+
+@router.post("/agents", response_model=AgentResponse)
+async def create_agent_endpoint(
+    session: AsyncSession = Depends(get_session),
+    request: AgentRequest = Body(...)
+):
+    agent = await AgentService.create_agent(
+        session, request.name, description=request.description, prompt=request.prompt, image=request.image
+    )
+    return AgentResponse(
+        uuid=agent.uuid,
+        name=agent.name,
+        description=agent.description,
+        prompt=agent.prompt,
+        image=agent.image,
+        created_at=agent.created_at,
+        updated_at=agent.updated_at
+    )

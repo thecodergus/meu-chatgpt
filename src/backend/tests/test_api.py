@@ -155,3 +155,35 @@ class TestAPI:
             response_json = response.json()
             assert "detail" in response_json
             assert "Erro ao processar a requisição" in response_json["detail"]
+# Testes para endpoints de agentes
+class TestAgentsAPI:
+    def test_agent_crud_flow(self):
+        # Cria agente
+        request = {"name": "test_agent", "description": "desc", "prompt": "p", "image": "img"}
+        response = client.post("/v1/agents", json=request)
+        assert response.status_code == 200
+        data = response.json()
+        assert "uuid" in data and data["name"] == "test_agent"
+        agent_uuid = data["uuid"]
+        # Obtém agente criado
+        response = client.get(f"/v1/agents/{agent_uuid}")
+        assert response.status_code == 200
+        data_get = response.json()
+        assert data_get["uuid"] == agent_uuid and data_get["name"] == "test_agent"
+        # Lista agentes
+        response = client.get("/v1/agents")
+        assert response.status_code == 200
+        agents_list = response.json()
+        assert any(a["uuid"] == agent_uuid for a in agents_list)
+        # Atualiza agente
+        update_req = {"name": "updated", "description": "new_desc", "prompt": "new_p", "image": "new_img"}
+        response = client.put(f"/v1/agents/{agent_uuid}", json=update_req)
+        assert response.status_code == 200
+        data_upd = response.json()
+        assert data_upd["name"] == "updated" and data_upd["description"] == "new_desc"
+        # Deleta agente
+        response = client.delete(f"/v1/agents/{agent_uuid}")
+        assert response.status_code == 204
+        # Verifica exclusão
+        response = client.get(f"/v1/agents/{agent_uuid}")
+        assert response.status_code == 404

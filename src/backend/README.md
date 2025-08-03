@@ -166,6 +166,21 @@ curl http://localhost:8000/v1/chat/completions \
 - `HOST`: Host para o servidor (padrão: 0.0.0.0)
 - `PORT`: Porta para o servidor (padrão: 8000)
 
+## Sistema de Conversas
+
+### Endpoints de Conversas
+- POST /v1/conversations: cria nova conversa retornando thread_uuid
+- GET /v1/conversations: lista todas as conversas
+- GET /v1/conversations/{thread_uuid}: obtém detalhes de uma conversa
+- POST /v1/conversations/{thread_uuid}/messages: envia mensagem no contexto da conversa
+
+### Migrations de Conversas
+1. Defina DATABASE_URL e CRYPTO_MASTER_KEY no .env
+2. Execute:
+   ```bash
+   alembic upgrade head
+   ```
+
 ## Endpoints
 
 - `GET /`: Endpoint de verificação

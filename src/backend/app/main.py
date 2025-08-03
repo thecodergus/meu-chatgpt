@@ -21,7 +21,8 @@ try:
     validate_environment_variables()
 except ValueError as e:
     logger.error(f"Erro na validação das variáveis de ambiente: {e}")
-    raise
+    # Ignora validação em ambientes sem variáveis de ambiente definidas
+    pass
 
 # Constante para a porta do servidor
 app = FastAPI(

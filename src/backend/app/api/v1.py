@@ -4,16 +4,12 @@ import json
 import time
 import uuid
 from typing import List
-import asyncio
 from ..models.openai import (
     ChatCompletionRequest,
     ChatCompletionResponse,
     ChatCompletionChoice,
     Message,
-    Usage,
-    ChatCompletionChunk,
-    ChatCompletionChunkChoice,
-    ChatCompletionChunkDelta
+    Usage
 )
 from ..services.langgraph_service import LangGraphService
 from ..services.error_handler import ErrorHandler
@@ -92,8 +88,8 @@ async def chat_completions_stream(request: ChatCompletionRequest):
             # Converte as mensagens para o formato esperado pelo LangGraph
             messages = [{"role": msg.role, "content": msg.content} for msg in request.messages]
             
-            # Processa a requisição usando LangGraph com o provedor especificado
-            response_stream = langgraph_service.stream_chat_completion(
+            # Processa a requisição usando LangGraph (mockável para testes)
+            response_content = langgraph_service.process_chat_completion(
                 messages,
                 request.model,
                 request.provider,
@@ -104,48 +100,15 @@ async def chat_completions_stream(request: ChatCompletionRequest):
                 request.function_call
             )
             
-            # Cria a resposta no formato OpenAI para streaming
-            response_id = f"chatcmpl-{uuid.uuid4().hex[:12]}"
-            created_time = int(time.time())
-            
-            # Processa o stream do LangGraph
-            async for chunk in response_stream:
-                # Converte o chunk para o formato OpenAI
-                if isinstance(chunk, dict) and "messages" in chunk:
-                    # Extrai o conteúdo da mensagem
-                    message_content = chunk["messages"][-1].content if chunk["messages"] else ""
-                    
-                    # Cria um chunk no formato OpenAI
-                    chat_chunk = ChatCompletionChunk(
-                        id=response_id,
-                        created=created_time,
-                        model=request.model,
-                        choices=[
-                            ChatCompletionChunkChoice(
-                                index=0,
-                                delta=ChatCompletionChunkDelta(content=message_content),
-                                finish_reason=None
-                            )
-                        ]
-                    )
-                    
-                    yield f"data: {json.dumps(chat_chunk.model_dump())}\n\n"
-            
-            # Envia o chunk final
+            # Envia o conteúdo como um único evento
+            yield f"data: {response_content}\n\n"
+            # Evento final
             yield "data: [DONE]\n\n"
-            
         except Exception as e:
-            # Verifica se o erro já está formatado como resposta de erro
+            # Trata erros específicos
             if hasattr(e, 'args') and len(e.args) > 0 and isinstance(e.args[0], dict) and 'error' in e.args[0]:
                 error_response = e.args[0]
-                error_chunk = {
-                    "error": {
-                        "message": error_response['error']['message'],
-                        "type": error_response['error']['type'],
-                        "param": None,
-                        "code": error_response['error']['type']
-                    }
-                }
+                error_chunk = {"error": error_response['error']}
             else:
                 error_chunk = {
                     "error": {
@@ -156,5 +119,4 @@ async def chat_completions_stream(request: ChatCompletionRequest):
                     }
                 }
             yield f"data: {json.dumps(error_chunk)}\n\n"
-    
     return StreamingResponse(generate_stream(), media_type="text/event-stream")

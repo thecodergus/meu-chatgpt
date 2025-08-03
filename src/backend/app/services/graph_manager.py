@@ -46,17 +46,16 @@ class GraphManager:
         response = self.graph.invoke({"messages": messages}, config=config)
         
         # Retorna a resposta
-def stream_messages(self, model, messages):
+    def stream_messages(self, model, messages):
         """Processa mensagens usando o grafo LangGraph com streaming"""
         # Salva o modelo como atributo da instância
         self.model = model
-        
+
         # Cria uma configuração única para esta execução
         config = {"configurable": {"thread_id": str(uuid.uuid4())}}
-        
+
         # Invoca o grafo com streaming
         response = self.graph.stream({"messages": messages}, config=config)
-        
+
         # Retorna o gerador de streaming
-        return response
         return response
